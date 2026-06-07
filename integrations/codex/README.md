@@ -13,9 +13,10 @@ This directory contains the Codex plugin/skill bundle for Odysseus.
 ```bash
 export ODYSSEUS_URL=http://your-odysseus-host:7000
 export ODYSSEUS_API_TOKEN=ody_generated_token
-mkdir -p ~/plugins
 curl -fsSL -H "Authorization: Bearer $ODYSSEUS_API_TOKEN" "$ODYSSEUS_URL/api/codex/plugin.zip" -o /tmp/odysseus-codex-plugin.zip
-python3 -m zipfile -e /tmp/odysseus-codex-plugin.zip ~/plugins
+mkdir -p ~/.codex/plugins
+rm -rf ~/.codex/plugins/odysseus
+python3 -m zipfile -e /tmp/odysseus-codex-plugin.zip ~/.codex/plugins
 python3 - <<'PY'
 import json
 from pathlib import Path
@@ -32,20 +33,20 @@ data.setdefault("interface", {}).setdefault("displayName", "Personal")
 plugins = data.setdefault("plugins", [])
 entry = {
     "name": "odysseus",
-    "source": {"source": "local", "path": "./plugins/odysseus"},
+    "source": {"source": "local", "path": "./.codex/plugins/odysseus"},
     "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
     "category": "Productivity",
 }
 data["plugins"] = [item for item in plugins if item.get("name") != "odysseus"] + [entry]
 p.write_text(json.dumps(data, indent=2) + "\n")
 PY
-codex plugin add odysseus@personal
+echo "Restart Codex, run /plugins, choose Personal, then install Odysseus."
 ```
 
 6. Verify:
 
 ```bash
-python3 ~/plugins/odysseus/scripts/odysseus_api.py capabilities
+python3 ~/.codex/plugins/odysseus/scripts/odysseus_api.py capabilities
 ```
 
 Codex must use `/api/codex/*` endpoints. SSH, Docker, direct Python imports, database queries, and MCP internals bypass Odysseus Settings and must not be used for user data access.

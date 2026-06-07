@@ -3233,12 +3233,13 @@ const AGENT_CONFIGS = {
     namePrefix: 'codex agent',
     defaultName: 'Codex Agent',
     pluginPath: '/api/codex/plugin.zip',
-    setupDescription: 'Downloads the plugin bundle and registers it with Codex. Sets <code>ODYSSEUS_URL</code> + <code>ODYSSEUS_API_TOKEN</code>, fetches the plugin from <a href="/api/codex/plugin.zip" style="color:var(--accent,var(--red));">this Odysseus instance</a>, and runs <code>codex plugin add odysseus@personal</code>.',
+    setupDescription: 'Downloads the plugin bundle and registers a Personal Codex marketplace entry. Sets <code>ODYSSEUS_URL</code> + <code>ODYSSEUS_API_TOKEN</code>, fetches the plugin from <a href="/api/codex/plugin.zip" style="color:var(--accent,var(--red));">this Odysseus instance</a>, then asks you to install Odysseus from <code>/plugins</code> in Codex.',
     buildSetup: (origin, token) => `export ODYSSEUS_URL=${origin}
 export ODYSSEUS_API_TOKEN='${token}'
-mkdir -p ~/plugins
 curl -fsSL -H "Authorization: Bearer $ODYSSEUS_API_TOKEN" "$ODYSSEUS_URL/api/codex/plugin.zip" -o /tmp/odysseus-codex-plugin.zip
-python3 -m zipfile -e /tmp/odysseus-codex-plugin.zip ~/plugins
+mkdir -p ~/.codex/plugins
+rm -rf ~/.codex/plugins/odysseus
+python3 -m zipfile -e /tmp/odysseus-codex-plugin.zip ~/.codex/plugins
 python3 - <<'PY'
 import json
 from pathlib import Path
@@ -3255,15 +3256,15 @@ data.setdefault("interface", {}).setdefault("displayName", "Personal")
 plugins = data.setdefault("plugins", [])
 entry = {
     "name": "odysseus",
-    "source": {"source": "local", "path": "./plugins/odysseus"},
+    "source": {"source": "local", "path": "./.codex/plugins/odysseus"},
     "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
     "category": "Productivity",
 }
 data["plugins"] = [item for item in plugins if item.get("name") != "odysseus"] + [entry]
 p.write_text(json.dumps(data, indent=2) + "\\n")
 PY
-codex plugin add odysseus@personal
-python3 ~/plugins/odysseus/scripts/odysseus_api.py capabilities`,
+echo "Restart Codex, run /plugins, choose Personal, then install Odysseus."
+python3 ~/.codex/plugins/odysseus/scripts/odysseus_api.py capabilities`,
   },
   claude: {
     label: 'Claude Agent',
