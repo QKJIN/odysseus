@@ -74,6 +74,42 @@ def create_default_admin():
     """Create an initial admin user if none exists."""
     auth_path = os.path.join(DATA_DIR, "auth.json")
     if os.path.exists(auth_path):
+        reset_requested = os.getenv("ODYSSEUS_RESET_ADMIN_PASSWORD", "").strip().lower() in {"1", "true", "yes", "on"}
+        reset_password = os.getenv("ODYSSEUS_ADMIN_PASSWORD", "").strip()
+        if reset_requested and reset_password:
+            import bcrypt
+            import json
+
+            username = os.getenv("ODYSSEUS_ADMIN_USER", "").strip().lower()
+            with open(auth_path, "r", encoding="utf-8") as f:
+                auth_data = json.load(f)
+            users = auth_data.setdefault("users", {})
+
+            if not username:
+                username = next(
+                    (name for name, data in users.items() if data.get("is_admin") is True),
+                    "admin",
+                )
+            username = username or "admin"
+
+            user = users.setdefault(username, {})
+            user["password_hash"] = bcrypt.hashpw(reset_password.encode(), bcrypt.gensalt()).decode()
+            user["is_admin"] = True
+            user.pop("totp_secret", None)
+            user.pop("totp_secret_pending", None)
+            user.pop("totp_backup_codes", None)
+            user["totp_enabled"] = False
+
+            with open(auth_path, "w", encoding="utf-8") as f:
+                json.dump(auth_data, f, indent=2)
+
+            sessions_path = os.path.join(DATA_DIR, "sessions.json")
+            with open(sessions_path, "w", encoding="utf-8") as f:
+                json.dump({}, f)
+
+            print(f"  [ok] Admin password reset ({username})")
+            print("        Remove ODYSSEUS_RESET_ADMIN_PASSWORD after you log in.")
+            return "reset"
         print("  [skip] auth.json already exists")
         return "exists"
 
@@ -209,6 +245,8 @@ def main():
         print("Login with your admin credentials.\n")
     elif admin_status == "exists":
         print("Login with your existing admin credentials.\n")
+    elif admin_status == "reset":
+        print("Login with the admin password from ODYSSEUS_ADMIN_PASSWORD.\n")
     elif admin_status == "skipped":
         print("Admin creation did not happen: dependencies are missing.\nRun 'pip install bcrypt' and rerun setup.\n")
     elif admin_status == "failed":
